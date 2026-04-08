@@ -17,7 +17,7 @@ import (
 const (
 	cc98ClientID           = "9a1fd200-8687-44b1-4c20-08d50a96e5cd"
 	cc98ClientSecret       = "8b53f727-08e2-4509-8857-e34bf92b27f2"
-	defaultUserAgent       = "cc98-signin/1.0"
+	defaultUserAgent       = "cc98-autosign-fast/1.0"
 	defaultConnectTimeout  = 5 * time.Second
 	defaultRequestTimeout  = 15 * time.Second
 )

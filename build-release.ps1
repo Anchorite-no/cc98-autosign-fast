@@ -27,7 +27,7 @@ Copy-Item $Readme (Join-Path $windowsFolder "README.md")
 $env:CGO_ENABLED = "0"
 $env:GOOS = "windows"
 $env:GOARCH = "amd64"
-& $GoBin build -trimpath -ldflags "-s -w" -o (Join-Path $windowsFolder "cc98-signin.exe") .\src
+& $GoBin build -trimpath -ldflags "-s -w" -o (Join-Path $windowsFolder "cc98-autosign-fast.exe") .\src
 
 $linuxFolder = Join-Path $Dist "cc98-autosign-fast-linux-amd64"
 New-Item -ItemType Directory -Path $linuxFolder | Out-Null
@@ -35,7 +35,7 @@ Copy-Item $EnvExample (Join-Path $linuxFolder ".env.example")
 Copy-Item $Readme (Join-Path $linuxFolder "README.md")
 $env:GOOS = "linux"
 $env:GOARCH = "amd64"
-& $GoBin build -trimpath -ldflags "-s -w" -o (Join-Path $linuxFolder "cc98-signin") .\src
+& $GoBin build -trimpath -ldflags "-s -w" -o (Join-Path $linuxFolder "cc98-autosign-fast") .\src
 
 $env:CGO_ENABLED = $null
 $env:GOOS = $null
