@@ -31,6 +31,7 @@ type Runner struct {
 
 type accountResult struct {
 	Index       int
+	Username    string
 	ResultText  string
 	TokenResult tokenResult
 }
@@ -121,6 +122,7 @@ func (r *Runner) runAccount(ctx context.Context, account Account) accountResult 
 	if token.AccessToken == "" {
 		return accountResult{
 			Index:       account.Index,
+			Username:    account.Username,
 			ResultText:  formatFailureText("获取 token 失败", token.RawText),
 			TokenResult: token,
 		}
@@ -134,6 +136,7 @@ func (r *Runner) runAccount(ctx context.Context, account Account) accountResult 
 
 	return accountResult{
 		Index:       account.Index,
+		Username:    account.Username,
 		ResultText:  formatResultText(summarizeSignResult(sign, info), sign),
 		TokenResult: token,
 	}
@@ -321,7 +324,7 @@ func formatFailureText(prefix, reason string) string {
 func formatOutputLines(results []accountResult) []string {
 	lines := make([]string, 0, len(results))
 	for _, result := range results {
-		lines = append(lines, fmt.Sprintf("账号%d %s", result.Index, result.ResultText))
+		lines = append(lines, fmt.Sprintf("账号%d(%s) %s", result.Index, result.Username, result.ResultText))
 	}
 	return lines
 }

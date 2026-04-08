@@ -20,9 +20,10 @@ func TestFormatResultTextSuccess(t *testing.T) {
 func TestFormatOutputLinesAlwaysKeepsAccountPrefix(t *testing.T) {
 	lines := formatOutputLines([]accountResult{{
 		Index:      1,
+		Username:   "anchorite",
 		ResultText: "✅ 签到成功",
 	}})
-	if len(lines) != 1 || lines[0] != "账号1 ✅ 签到成功" {
+	if len(lines) != 1 || lines[0] != "账号1(anchorite) ✅ 签到成功" {
 		t.Fatalf("unexpected lines: %#v", lines)
 	}
 }
