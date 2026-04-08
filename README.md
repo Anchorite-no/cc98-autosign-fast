@@ -2,19 +2,26 @@
 
 一个面向 CC98 的轻量自动签到工具。
 
-当前主实现是 Go 版，目标是提供一个可直接分发的 Windows 双击成品：
+当前主实现是 Go 版，发布包会直接提供：
 
-- `cc98-autosign-fast.exe`
-- `.env`
+- Windows：`cc98-autosign-fast.exe` + `.env`
+- Linux：`cc98-autosign-fast` + `.env`
 
 ## 使用方式
 
-### 普通用户
+### Windows
 
-1. 到 GitHub Releases 下载最新发布包
+1. 到 GitHub Releases 下载 Windows 发布包
 2. 解压后填写 `.env`
 3. 双击 `cc98-autosign-fast.exe`
 4. 程序会自动签到，并在窗口里显示结果
+
+### Linux
+
+1. 到 GitHub Releases 下载 Linux 发布包
+2. 解压后填写 `.env`
+3. 在终端执行 `./cc98-autosign-fast`
+4. 程序会输出签到结果后直接退出
 
 如果 `.env` 不存在，程序会自动生成一份模板，并提示你填写后重新运行。
 

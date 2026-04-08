@@ -19,7 +19,7 @@ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
 
 linux_dir="$DIST/cc98-autosign-fast-linux-amd64"
 mkdir -p "$linux_dir"
-cp "$ROOT/.env.example" "$linux_dir/.env.example"
+cp "$ROOT/.env.example" "$linux_dir/.env"
 cp "$ROOT/README.md" "$linux_dir/README.md"
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
   "$GO_BIN" build -trimpath -ldflags "-s -w" -o "$linux_dir/cc98-autosign-fast" ./src

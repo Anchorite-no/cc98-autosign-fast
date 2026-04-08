@@ -31,7 +31,7 @@ $env:GOARCH = "amd64"
 
 $linuxFolder = Join-Path $Dist "cc98-autosign-fast-linux-amd64"
 New-Item -ItemType Directory -Path $linuxFolder | Out-Null
-Copy-Item $EnvExample (Join-Path $linuxFolder ".env.example")
+Copy-Item $EnvExample (Join-Path $linuxFolder ".env")
 Copy-Item $Readme (Join-Path $linuxFolder "README.md")
 $env:GOOS = "linux"
 $env:GOARCH = "amd64"
