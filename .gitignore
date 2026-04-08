@@ -1,0 +1,16 @@
+dist/
+*.zip
+*.tar.gz
+*.exe
+
+.env
+*.local.env
+.webvpn-cookie-cache.json
+
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+coverage.out
+src.exe
