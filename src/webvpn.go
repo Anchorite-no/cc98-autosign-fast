@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const (
@@ -153,8 +154,12 @@ func clearWebVPNCookies(jar http.CookieJar) {
 	}
 }
 
-func loginWebVPN(ctx context.Context, client *http.Client, username, password string) error {
+func loginWebVPN(ctx context.Context, client *http.Client, username, password string, recordTiming func(string, time.Duration)) error {
+	loginStarted := time.Now()
 	loginPage, err := fetchLoginPage(ctx, client)
+	if recordTiming != nil {
+		recordTiming("GET /login", time.Since(loginStarted))
+	}
 	if err != nil {
 		return err
 	}
@@ -179,7 +184,11 @@ func loginWebVPN(ctx context.Context, client *http.Client, username, password st
 	form.Set("needCaptcha", "false")
 	form.Set("captcha_id", fields.CaptchaID)
 
+	doLoginStarted := time.Now()
 	body, statusCode, err := postForm(ctx, client, doLoginURL, form)
+	if recordTiming != nil {
+		recordTiming("POST /do-login", time.Since(doLoginStarted))
+	}
 	if err != nil {
 		return err
 	}
@@ -195,7 +204,11 @@ func loginWebVPN(ctx context.Context, client *http.Client, username, password st
 	loginError := stringValue(payload["error"])
 	switch {
 	case loginError == "NEED_CONFIRM":
+		confirmStarted := time.Now()
 		_, statusCode, err = postForm(ctx, client, doConfirmLoginURL, form)
+		if recordTiming != nil {
+			recordTiming("POST /do-confirm-login", time.Since(confirmStarted))
+		}
 		if err != nil {
 			return err
 		}

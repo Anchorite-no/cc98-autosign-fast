@@ -25,7 +25,7 @@
 
 如果 `.env` 不存在，程序会自动生成一份模板，并提示你填写后重新运行。
 
-### `.env` 多账号示例
+## `.env` 多账号示例
 
 ```env
 WEBVPN_USER=你的WebVPN账号
@@ -56,6 +56,65 @@ Cookie ✅ 命中
 耗时 ⏱ 0.13s
 ```
 
+## 请求链
+
+当前实现把请求分成两段：WebVPN 认证链和 CC98 业务链。
+
+### WebVPN 认证链
+
+冷启动时，WebVPN 部分只做最小登录流程：
+
+1. `GET /login`
+2. `POST /do-login`
+3. 只有返回 `NEED_CONFIRM` 时才 `POST /do-confirm-login`
+
+热启动时，会先读取运行目录下的 `.webvpn-cookie-cache.json`。如果缓存可用，整段 WebVPN 登录会被直接跳过。
+
+如果首个账号的 `token` 请求被打回 WebVPN 登录页，程序会：
+
+1. 清空当前 cookie
+2. 重新执行一次 WebVPN 认证链
+3. 只重试当前账号一次
+
+### CC98 业务链
+
+WebVPN 会话建立完成后，每个账号都会走同一条业务链：
+
+1. `POST connect/token`
+2. `POST me/signin`
+3. `GET me/signin`
+
+其中：
+
+- `connect/token` 用来换取当前账号的 access token
+- `me/signin` 用来执行签到
+- `GET me/signin` 用来补充读取连续签到天数和今日奖励
+
+## 为什么快
+
+### WebVPN 部分为什么快
+
+- WebVPN 只保留最小登录链，不走主页跳转
+- 不再请求 `user/info`
+- 命中 cookie 缓存后，整段 WebVPN 登录会被直接跳过
+
+### CC98 部分为什么快
+
+- 不做动态 host 改写，直接走固定的 `connect/token` 和 `me/signin` 路由
+- 多账号共享同一个 WebVPN 会话，不会为每个账号重复登录
+- 热启动时只剩真正的业务请求
+
+所以冷启动时主要耗时在 WebVPN 登录，热启动时则主要耗时在 CC98 的 token / signin / sign-info 这几步。
+
+## 固定路径与缓存机制
+
+- 当前实现依赖已经验证过的固定 WebVPN token/sign 路由
+- 程序会在运行目录写入 `.webvpn-cookie-cache.json`
+- 缓存里真正关键的是 `wengine_vpn_ticketwebvpn_zju_edu_cn`
+- `route` 使用程序内置的固定默认值
+
+这也是当前实现能够在命中缓存后明显提速的原因。
+
 ## 仓库结构
 
 - `src/`
@@ -83,6 +142,5 @@ bash ./build-release.sh
 
 ## 说明
 
-- 程序会在运行目录写入 `.webvpn-cookie-cache.json` 复用 WebVPN 登录态
 - 不要提交 `.env`、`.webvpn-cookie-cache.json`、`dist/` 或任何真实账号密码
 - `python-reference/` 不是主发布入口，普通用户优先使用 Go 版 release

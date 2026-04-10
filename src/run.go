@@ -27,6 +27,8 @@ type Runner struct {
 	client    *http.Client
 	output    io.Writer
 	cachePath string
+	showTiming bool
+	webvpnTimings []timingEntry
 }
 
 type accountResult struct {
@@ -34,6 +36,7 @@ type accountResult struct {
 	Username    string
 	ResultText  string
 	TokenResult tokenResult
+	Timings     []timingEntry
 }
 
 type tokenResult struct {
@@ -54,12 +57,19 @@ type signSummary struct {
 	Streak *int
 }
 
-func NewRunner(cfg Config, output io.Writer) *Runner {
+type timingEntry struct {
+	Label    string
+	Duration time.Duration
+}
+
+func NewRunner(cfg Config, output io.Writer, showTiming bool) *Runner {
 	return &Runner{
-		cfg:       cfg,
-		client:    newHTTPClient(),
-		output:    output,
-		cachePath: cookieCachePath(cfg.EnvPath),
+		cfg:         cfg,
+		client:      newHTTPClient(),
+		output:      output,
+		cachePath:   cookieCachePath(cfg.EnvPath),
+		showTiming:  showTiming,
+		webvpnTimings: make([]timingEntry, 0, 4),
 	}
 }
 
@@ -69,7 +79,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	cookieCacheHit := cookieCacheLoaded
 
 	if !cookieCacheLoaded {
-		if err := loginWebVPN(ctx, r.client, r.cfg.WebVPNUser, r.cfg.WebVPNPass); err != nil {
+		if err := loginWebVPN(ctx, r.client, r.cfg.WebVPNUser, r.cfg.WebVPNPass, r.webvpnTimingRecorder("WebVPN")); err != nil {
 			return err
 		}
 		if err := saveCookieCache(r.client.Jar, r.cachePath); err != nil {
@@ -97,7 +107,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	} else {
 		fmt.Fprintln(r.output, "Cookie ❌ 未命中")
 	}
-	fmt.Fprintf(r.output, "耗时 ⏱ %.2fs\n", time.Since(started).Seconds())
+	total := time.Since(started)
+	fmt.Fprintf(r.output, "耗时 ⏱ %.2fs\n", total.Seconds())
+	if r.showTiming {
+		for _, line := range formatTimingLines(r.webvpnTimings, results) {
+			fmt.Fprintln(r.output, line)
+		}
+	}
 	return nil
 }
 
@@ -108,7 +124,7 @@ func (r *Runner) runAccountWithCookieRetry(ctx context.Context, account Account,
 	}
 
 	clearWebVPNCookies(r.client.Jar)
-	if err := loginWebVPN(ctx, r.client, r.cfg.WebVPNUser, r.cfg.WebVPNPass); err != nil {
+	if err := loginWebVPN(ctx, r.client, r.cfg.WebVPNUser, r.cfg.WebVPNPass, r.webvpnTimingRecorder("WebVPN(回退)")); err != nil {
 		return accountResult{}, false, err
 	}
 	if err := saveCookieCache(r.client.Jar, r.cachePath); err != nil {
@@ -118,20 +134,29 @@ func (r *Runner) runAccountWithCookieRetry(ctx context.Context, account Account,
 }
 
 func (r *Runner) runAccount(ctx context.Context, account Account) accountResult {
+	timings := make([]timingEntry, 0, 3)
+
+	tokenStarted := time.Now()
 	token := r.fetchAccessToken(ctx, account)
+	timings = append(timings, timingEntry{Label: "POST connect/token", Duration: time.Since(tokenStarted)})
 	if token.AccessToken == "" {
 		return accountResult{
 			Index:       account.Index,
 			Username:    account.Username,
 			ResultText:  formatFailureText("获取 token 失败", token.RawText),
 			TokenResult: token,
+			Timings:     timings,
 		}
 	}
 
+	signStarted := time.Now()
 	sign := r.signIn(ctx, token.AccessToken)
+	timings = append(timings, timingEntry{Label: "POST me/signin", Duration: time.Since(signStarted)})
 	var info map[string]any
 	if sign.OK {
+		infoStarted := time.Now()
 		info = r.getSignInfo(ctx, token.AccessToken)
+		timings = append(timings, timingEntry{Label: "GET me/signin", Duration: time.Since(infoStarted)})
 	}
 
 	return accountResult{
@@ -139,6 +164,7 @@ func (r *Runner) runAccount(ctx context.Context, account Account) accountResult 
 		Username:    account.Username,
 		ResultText:  formatResultText(summarizeSignResult(sign, info), sign),
 		TokenResult: token,
+		Timings:     timings,
 	}
 }
 
@@ -327,6 +353,36 @@ func formatOutputLines(results []accountResult) []string {
 		lines = append(lines, fmt.Sprintf("账号%d(%s) %s", result.Index, result.Username, result.ResultText))
 	}
 	return lines
+}
+
+func formatTimingLines(webvpnTimings []timingEntry, results []accountResult) []string {
+	lines := make([]string, 0, len(webvpnTimings)+len(results)+1)
+	for _, entry := range webvpnTimings {
+		lines = append(lines, fmt.Sprintf("%s %.2fs", entry.Label, entry.Duration.Seconds()))
+	}
+	for _, result := range results {
+		if len(result.Timings) == 0 {
+			continue
+		}
+		parts := make([]string, 0, len(result.Timings))
+		for _, entry := range result.Timings {
+			parts = append(parts, fmt.Sprintf("%s %.2fs", entry.Label, entry.Duration.Seconds()))
+		}
+		lines = append(lines, fmt.Sprintf("账号%d(%s)耗时 · %s", result.Index, result.Username, strings.Join(parts, " · ")))
+	}
+	return lines
+}
+
+func (r *Runner) webvpnTimingRecorder(prefix string) func(string, time.Duration) {
+	return func(label string, duration time.Duration) {
+		if !r.showTiming {
+			return
+		}
+		r.webvpnTimings = append(r.webvpnTimings, timingEntry{
+			Label:    fmt.Sprintf("%s · %s", prefix, label),
+			Duration: duration,
+		})
+	}
 }
 
 func newHTTPClient() *http.Client {

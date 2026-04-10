@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestFormatResultTextSuccess(t *testing.T) {
 	reward := 1141
@@ -32,5 +35,29 @@ func TestIsWebVPNLoginResponse(t *testing.T) {
 	result := tokenResult{RawText: `<input name="_csrf" value="abc"><input name="captcha_id" value="def">`}
 	if !isWebVPNLoginResponse(result) {
 		t.Fatal("expected login page marker to be detected")
+	}
+}
+
+func TestFormatTimingLines(t *testing.T) {
+	lines := formatTimingLines(
+		[]timingEntry{{Label: "WebVPN · GET /login", Duration: 120 * time.Millisecond}},
+		[]accountResult{{
+			Index:    1,
+			Username: "anchorite",
+			Timings: []timingEntry{
+				{Label: "POST connect/token", Duration: 40 * time.Millisecond},
+				{Label: "POST me/signin", Duration: 20 * time.Millisecond},
+			},
+		}},
+	)
+
+	if len(lines) != 2 {
+		t.Fatalf("unexpected timing line count: %#v", lines)
+	}
+	if lines[0] != "WebVPN · GET /login 0.12s" {
+		t.Fatalf("unexpected webvpn timing line: %q", lines[0])
+	}
+	if lines[1] != "账号1(anchorite)耗时 · POST connect/token 0.04s · POST me/signin 0.02s" {
+		t.Fatalf("unexpected account timing line: %q", lines[1])
 	}
 }

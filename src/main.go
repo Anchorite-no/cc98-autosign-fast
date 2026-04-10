@@ -24,6 +24,7 @@ func main() {
 func runApp(pauseOnExit bool) int {
 	defaultEnvPath := defaultEnvPath()
 	envPath := flag.String("env", defaultEnvPath, "Path to .env file")
+	showTiming := flag.Bool("timing", false, "Show per-request timings.")
 	flag.Parse()
 
 	templateCreated, err := EnsureEnvFile(*envPath)
@@ -38,7 +39,7 @@ func runApp(pauseOnExit bool) int {
 		return 2
 	}
 
-	runner := NewRunner(cfg, os.Stdout)
+	runner := NewRunner(cfg, os.Stdout, *showTiming)
 	if err := runner.Run(context.Background()); err != nil {
 		fmt.Fprintf(os.Stderr, "运行失败\n%s\n", err)
 		return 1
