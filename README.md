@@ -3,9 +3,9 @@
 一个面向浙江大学 CC98 的轻量自动签到工具，也是一份可直接运行的 CC98 自动签到脚本。
 支持 WebVPN、多账号、Windows 和 Linux。
 
-如果你在找 `CC98 自动签到脚本`、`cc98自动签到脚本`、`CC98 签到脚本`、`CC98 自动签到工具` 或 `CC98 autosign`，这个仓库就是对应的开源实现。
+如果你想找一个能直接用的 CC98 签到脚本，这个仓库就是对应的开源实现。
 
-English: Fast CC98 auto sign-in tool with lightweight WebVPN flow and prebuilt Go releases.
+English: A fast CC98 auto sign-in tool with a lightweight WebVPN flow and prebuilt Go releases.
 
 当前主实现是 Go 版，发布包会直接提供：
 
