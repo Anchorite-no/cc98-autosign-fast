@@ -14,7 +14,7 @@ func TestFormatResultTextSuccess(t *testing.T) {
 		Streak: &streak,
 	}, signResult{})
 
-	expected := "✅ 签到成功 · 🎁 1141财富值 · 📅 连续 30 天"
+	expected := "签到成功 · 1141财富值 · 连续 30 天"
 	if text != expected {
 		t.Fatalf("unexpected text: %q", text)
 	}
@@ -24,9 +24,9 @@ func TestFormatOutputLinesAlwaysKeepsAccountPrefix(t *testing.T) {
 	lines := formatOutputLines([]accountResult{{
 		Index:      1,
 		Username:   "anchorite",
-		ResultText: "✅ 签到成功",
+		ResultText: "签到成功",
 	}})
-	if len(lines) != 1 || lines[0] != "账号1(anchorite) ✅ 签到成功" {
+	if len(lines) != 1 || lines[0] != "账号1(anchorite) 签到成功" {
 		t.Fatalf("unexpected lines: %#v", lines)
 	}
 }

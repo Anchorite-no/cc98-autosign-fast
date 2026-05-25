@@ -15,20 +15,26 @@ import (
 )
 
 const (
-	cc98ClientID           = "9a1fd200-8687-44b1-4c20-08d50a96e5cd"
-	cc98ClientSecret       = "8b53f727-08e2-4509-8857-e34bf92b27f2"
-	defaultUserAgent       = "cc98-autosign-fast/1.0"
-	defaultConnectTimeout  = 5 * time.Second
-	defaultRequestTimeout  = 15 * time.Second
+	cc98ClientID          = "9a1fd200-8687-44b1-4c20-08d50a96e5cd"
+	cc98ClientSecret      = "8b53f727-08e2-4509-8857-e34bf92b27f2"
+	defaultUserAgent      = "cc98-autosign-fast/1.0"
+	defaultConnectTimeout = 5 * time.Second
+	defaultRequestTimeout = 15 * time.Second
 )
 
 type Runner struct {
-	cfg       Config
-	client    *http.Client
-	output    io.Writer
-	cachePath string
-	showTiming bool
+	cfg           Config
+	client        *http.Client
+	output        io.Writer
+	cachePath     string
+	stats         runStats
+	showTiming    bool
 	webvpnTimings []timingEntry
+}
+
+type runStats struct {
+	CookieCacheHit bool
+	Duration       time.Duration
 }
 
 type accountResult struct {
@@ -64,19 +70,24 @@ type timingEntry struct {
 
 func NewRunner(cfg Config, output io.Writer, showTiming bool) *Runner {
 	return &Runner{
-		cfg:         cfg,
-		client:      newHTTPClient(),
-		output:      output,
-		cachePath:   cookieCachePath(cfg.EnvPath),
-		showTiming:  showTiming,
+		cfg:           cfg,
+		client:        newHTTPClient(),
+		output:        output,
+		cachePath:     cookieCachePath(cfg.EnvPath),
+		showTiming:    showTiming,
 		webvpnTimings: make([]timingEntry, 0, 4),
 	}
 }
 
 func (r *Runner) Run(ctx context.Context) error {
 	started := time.Now()
+	defer func() {
+		r.stats.Duration = time.Since(started)
+	}()
+
 	cookieCacheLoaded := loadCookieCache(r.client.Jar, r.cachePath)
 	cookieCacheHit := cookieCacheLoaded
+	r.stats.CookieCacheHit = cookieCacheHit
 
 	if !cookieCacheLoaded {
 		if err := loginWebVPN(ctx, r.client, r.cfg.WebVPNUser, r.cfg.WebVPNPass, r.webvpnTimingRecorder("WebVPN")); err != nil {
@@ -95,6 +106,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 		if retried {
 			cookieCacheHit = false
+			r.stats.CookieCacheHit = cookieCacheHit
 		}
 		results = append(results, result)
 	}
@@ -102,13 +114,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	for _, line := range formatOutputLines(results) {
 		fmt.Fprintln(r.output, line)
 	}
-	if cookieCacheHit {
-		fmt.Fprintln(r.output, "Cookie ✅ 命中")
-	} else {
-		fmt.Fprintln(r.output, "Cookie ❌ 未命中")
-	}
-	total := time.Since(started)
-	fmt.Fprintf(r.output, "耗时 ⏱ %.2fs\n", total.Seconds())
 	if r.showTiming {
 		for _, line := range formatTimingLines(r.webvpnTimings, results) {
 			fmt.Fprintln(r.output, line)
@@ -323,12 +328,12 @@ func summarizeSignResult(sign signResult, signInfo map[string]any) signSummary {
 func formatResultText(summary signSummary, sign signResult) string {
 	switch summary.Status {
 	case "success", "already":
-		parts := []string{"✅ 签到成功"}
+		parts := []string{"签到成功"}
 		if summary.Reward != nil {
-			parts = append(parts, fmt.Sprintf("🎁 %d财富值", *summary.Reward))
+			parts = append(parts, fmt.Sprintf("%d财富值", *summary.Reward))
 		}
 		if summary.Streak != nil {
-			parts = append(parts, fmt.Sprintf("📅 连续 %d 天", *summary.Streak))
+			parts = append(parts, fmt.Sprintf("连续 %d 天", *summary.Streak))
 		}
 		return strings.Join(parts, " · ")
 	default:
@@ -344,7 +349,7 @@ func formatFailureText(prefix, reason string) string {
 	if isWebVPNLoginText(reason) {
 		reason = "登录状态失效"
 	}
-	return fmt.Sprintf("❌ %s · %s", prefix, reason)
+	return fmt.Sprintf("%s · %s", prefix, reason)
 }
 
 func formatOutputLines(results []accountResult) []string {
